@@ -20,7 +20,7 @@ Example scripts for both CPU-only and accelerated architectures are provided in 
 
 ## Run Definitions and Requirements
 
-The tables below detail the required tests. The OSU micro-benchmarks are required to be run from the minimum possible message size to a message size of 65536kb (65mb) in the default 2<sup>n</sup> increments. Each micro-benchmark should be run a minimum of 5 times each and the mean of these results reported. Additionally, if improved performance is found for a test that uses a different ranking scheme than specified as below, this may be reported under an "optimized" category submission.
+The tables below detail the required tests. The OSU micro-benchmarks are required to be run from the minimum possible message size to a message size of 65536kb (65mb) in the default 2<sup>n</sup> increments. Each micro-benchmark should be run a minimum of 5 times each and the mean of these results reported. The micro-benchmarks can also be run with any chosen communication algorithm that best fits the vendors network. Additionally, if improved performance is found for a test that uses a different ranking scheme than specified as below, this may be reported under an "optimized" category submission.
 
 ### CPU Run Requirements
 

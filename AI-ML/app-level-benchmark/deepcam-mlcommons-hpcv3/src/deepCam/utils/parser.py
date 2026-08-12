@@ -61,7 +61,7 @@ def get_parser():
     AP.add_argument("--batchnorm_group_size", type=int, default=1, help="Process group size for sync batchnorm")
     AP.add_argument("--batchnorm_group_stride", type=int, default=1, help="Process group stride for sync batchnorm") 
     AP.add_argument("--shuffle_mode", type=str, default="global", choices=["global", "node", "gpu"], help="Specifies how to shuffle the data")
-    AP.add_argument("--data_format", type=str, default="dali-numpy", choices=["hdf5", "dali-numpy", "dali-numpy-fused", "dali-recordio", "dali-es", "dali-es-fused", "dali-es-gpu", "dali-es-gpu-fused", "dali-es-disk", "dali-dummy"], help="Specify data format")
+    AP.add_argument("--data_format", type=str, default="dali-numpy", choices=["hdf5", "pytorch-numpy", "dali-numpy", "dali-numpy-fused", "dali-recordio", "dali-es", "dali-es-fused", "dali-es-gpu", "dali-es-gpu-fused", "dali-es-disk", "dali-dummy", "rocal-numpy"], help="Specify data format")
     AP.add_argument("--data_cache_directory", type=str, default="/tmp", help="Directory to which the data is cached. Only relevant for dali-es-disk dataloader, ignored otherwise")
     AP.add_argument("--data_oversampling_factor", type=int, default=1, help="Determines how many different shard per nodes will be staged")
     AP.add_argument("--precision_mode", type=str, default="amp", choices=["fp32", "amp", "amp-bf16", "fp16"], help="Specify precision format")

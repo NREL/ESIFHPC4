@@ -25,11 +25,19 @@ import itertools
 import json
 import threading
 
-# NVML stuff
-from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetClock, \
-                   nvmlDeviceGetUtilizationRates, nvmlDeviceGetPowerUsage, nvmlDeviceGetEnforcedPowerLimit, \
-                   nvmlDeviceGetMemoryInfo
-from pynvml import NVML_CLOCK_SM, NVML_CLOCK_ID_CURRENT, NVML_CLOCK_ID_APP_CLOCK_TARGET
+# NVML is optional and only required when NVML logging is enabled.
+try:
+    from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetClock, \
+                       nvmlDeviceGetUtilizationRates, nvmlDeviceGetPowerUsage, \
+                       nvmlDeviceGetEnforcedPowerLimit, nvmlDeviceGetMemoryInfo
+    from pynvml import (
+        NVML_CLOCK_SM,
+        NVML_CLOCK_ID_CURRENT,
+        NVML_CLOCK_ID_APP_CLOCK_TARGET,
+    )
+    _has_nvml = True
+except ImportError:
+    _has_nvml = False
 
 def _current_time_ms():
     """Returns current milliseconds since epoch."""
@@ -95,6 +103,9 @@ class PLogger(object):
             
         # NVML stuff
         if ("enable_nvml_logging" in kwargs) and (kwargs["enable_nvml_logging"]):
+            if not _has_nvml:
+                raise RuntimeError(
+                    "NVML logging was requested, but pynvml is not installed")
             nvmlInit()
             self.nvml_handle = nvmlDeviceGetHandleByIndex(device.index)
             self.sampling_info = {"stop": False, "sample_frequency": 0.01}

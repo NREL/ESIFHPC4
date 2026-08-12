@@ -57,7 +57,7 @@ class Trainer(object):
         self.gscaler = grad_scaler
         self.scheduler = scheduler
         self.device = device
-        self.enable_dali = (not pargs.data_format == "hdf5")
+        self.enable_dali = pargs.data_format not in ["hdf5", "pytorch-numpy"]
         self.data_parallel_size = comm.get_data_parallel_size()
 
         # some debug modes

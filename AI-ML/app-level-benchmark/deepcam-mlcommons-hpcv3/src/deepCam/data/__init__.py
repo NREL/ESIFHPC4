@@ -29,28 +29,59 @@ from torch.utils.data import DistributedSampler
 
 # regular datasets
 from .cam_hdf5_dataset import CamDataset
-from .cam_numpy_dali_dataset import CamDaliNumpyDataloader
-from .cam_recordio_dali_dataset import CamDaliRecordIODataloader
-from .cam_es_dali_dataset import CamDaliESDataloader
-from .cam_es_dali_gpu_dataset import CamDaliESGPUDataloader
-from .cam_es_disk_dali_dataset import CamDaliESDiskDataloader
-from .dummy_dali_dataset import DummyDaliDataloader
+from .cam_numpy_pytorch_dataset import CamNumpyDataset
 
-# fused datasets
-from .cam_numpy_dali_fused_dataset import CamDaliNumpyFusedDataloader
-from .cam_es_dali_fused_dataset import CamDaliESFusedDataloader
-from .cam_es_dali_gpu_fused_dataset import CamDaliESGPUFusedDataloader  
+# DALI is optional so non-NVIDIA loader paths remain importable.
+try:
+    from .cam_numpy_dali_dataset import CamDaliNumpyDataloader
+    from .cam_recordio_dali_dataset import CamDaliRecordIODataloader
+    from .cam_es_dali_dataset import CamDaliESDataloader
+    from .cam_es_dali_gpu_dataset import CamDaliESGPUDataloader
+    from .cam_es_disk_dali_dataset import CamDaliESDiskDataloader
+    from .dummy_dali_dataset import DummyDaliDataloader
+    from .cam_numpy_dali_fused_dataset import CamDaliNumpyFusedDataloader
+    from .cam_es_dali_fused_dataset import CamDaliESFusedDataloader
+    from .cam_es_dali_gpu_fused_dataset import CamDaliESGPUFusedDataloader
+    _has_dali = True
+    _dali_import_error = None
+except ImportError as error:
+    _has_dali = False
+    _dali_import_error = error
 
 # common stuff
 from .common import get_datashapes
+
+# rocAL datasets (conditional import — only available on ROCm systems)
+try:
+    from .cam_numpy_rocal_dataset import CamRocalNumpyDataloader
+    _has_rocal = True
+except ImportError:
+    _has_rocal = False
     
         
+def _check_data_backend(data_format):
+    if data_format.startswith("dali-") and not _has_dali:
+        raise RuntimeError(
+            "The selected data format requires NVIDIA DALI, but DALI "
+            f"could not be imported: {_dali_import_error}"
+        )
+
+    if data_format.startswith("rocal-") and not _has_rocal:
+        raise RuntimeError(
+            "The selected data format requires rocAL, but rocAL "
+            "could not be imported."
+        )
+
+
 # helper function to de-clutter the main training script
 def get_dataloaders(pargs, root_dir, device, seed, comm_size, comm_rank):
     
-    if pargs.data_format == "hdf5":
+    if pargs.data_format in ["hdf5", "pytorch-numpy"]:
         train_dir = os.path.join(root_dir, "train")
-        train_set = CamDataset(train_dir, 
+        dataset_handle = (
+            CamDataset if pargs.data_format == "hdf5" else CamNumpyDataset
+        )
+        train_set = dataset_handle(train_dir,
                                statsfile = os.path.join(root_dir, 'stats.h5'),
                                channels = pargs.channels,
                                allow_uneven_distribution = False,
@@ -77,6 +108,7 @@ def get_dataloaders(pargs, root_dir, device, seed, comm_size, comm_rank):
         train_size = train_set.global_size
 
     else:
+        _check_data_backend(pargs.data_format)
         fused = False
         oversampling_factor=1
         kwargs={}
@@ -122,7 +154,11 @@ def get_dataloaders(pargs, root_dir, device, seed, comm_size, comm_rank):
             label_filter = 'label-*.npy'
             oversampling_factor = pargs.data_oversampling_factor
             kwargs = dict(cache_directory = os.path.join(pargs.data_cache_directory, "train"))
-            
+        elif pargs.data_format == "rocal-numpy":
+            dl_handle = CamRocalNumpyDataloader
+            data_filter = 'data-*.npy'
+            label_filter = 'label-*.npy'
+
         train_dir = os.path.join(root_dir, "train")
         if not fused:
             
@@ -171,9 +207,12 @@ def get_dataloaders(pargs, root_dir, device, seed, comm_size, comm_rank):
         train_size = train_loader.global_size
     
     # validation: we only want to shuffle the set if we are cutting off validation after a certain number of steps
-    if pargs.data_format == "hdf5":
+    if pargs.data_format in ["hdf5", "pytorch-numpy"]:
         validation_dir = os.path.join(root_dir, "validation")
-        validation_set = CamDataset(validation_dir, 
+        dataset_handle = (
+            CamDataset if pargs.data_format == "hdf5" else CamNumpyDataset
+        )
+        validation_set = dataset_handle(validation_dir,
                                     statsfile = os.path.join(root_dir, 'stats.h5'),
                                     channels = pargs.channels,
                                     allow_uneven_distribution = True,
@@ -194,6 +233,7 @@ def get_dataloaders(pargs, root_dir, device, seed, comm_size, comm_rank):
         validation_size = validation_set.global_size
         
     else:
+        _check_data_backend(pargs.data_format)
         fused = False
         kwargs={}
         if (pargs.data_format in ["dali-numpy", "dali-es", "dali-es-disk", "dali-es-gpu"]):
@@ -210,6 +250,10 @@ def get_dataloaders(pargs, root_dir, device, seed, comm_size, comm_rank):
             dl_handle = CamDaliRecordIODataloader
             data_filter='data-*.rec'
             label_filter='label-*.rec'
+        elif pargs.data_format == "rocal-numpy":
+            dl_handle = CamRocalNumpyDataloader
+            data_filter='data-*.npy'
+            label_filter='label-*.npy'
             
         validation_dir = os.path.join(root_dir, "validation")
         if not fused:

@@ -38,6 +38,7 @@ from mlperf_logging import mllog
 # custom stuff
 from utils import metric
 from utils import comm
+from utils import validation_helpers
 
 # import wandb
 try:
@@ -62,7 +63,7 @@ class Validator(object):
 
         # disable for now because of pool sharing bug
         self.enable_graph = False #pargs.enable_graph
-        self.enable_dali = (not pargs.data_format == "hdf5")
+        self.enable_dali = pargs.data_format not in ["hdf5", "pytorch-numpy"]
         
         # set that to None
         self.graph = None
@@ -282,8 +283,9 @@ class Validator(object):
                     with amp.autocast(enabled = self.enable_amp, dtype=self.amp_dtype):
                         outputs_val = self.model.forward(inputs_val)
                 
-                        # Compute loss
-                        loss_val = self.criterion(outputs_val, label_val)
+                        # Exclude synthetic padding from validation loss.
+                        loss_val = validation_helpers.compute_unpadded_loss(
+                            self.criterion, outputs_val, label_val, num_samples)
 
                 else:
                     self.static_input.copy_(inputs_val)
@@ -343,6 +345,11 @@ def validate(pargs, comm_rank, comm_size,
 
     # evaluate
     loss_avg_val, iou_avg_val = validator.evaluate(validation_loader, comm_rank)
+
+    # The distributed reduction makes these values identical on all ranks, so
+    # every rank fails together instead of leaving peers blocked in a collective.
+    validation_helpers.ensure_finite_validation_result(
+        loss_avg_val, iou_avg_val)
 
     # print results
     logger.event(key="eval_accuracy", value=iou_avg_val, metadata={'epoch_num': epoch+1, 'step_num': step})

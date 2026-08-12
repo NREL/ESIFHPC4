@@ -403,8 +403,8 @@ def main(pargs):
         plog.event(plog.INTERVAL_START, key="epoch_start", metadata={'epoch_num': epoch+1, 'step_num': step}) 
         logger.start(key=mllog.constants.EPOCH_START, metadata = {'epoch_num': epoch+1, 'step_num': step}, sync=False)
 
-        if pargs.data_format == "hdf5":
-            distributed_train_sampler.set_epoch(epoch)
+        if pargs.data_format in ["hdf5", "pytorch-numpy"]:
+            train_loader.sampler.set_epoch(epoch)
 
         # train 
         step = train_epoch(pargs, comm_rank, comm_size,

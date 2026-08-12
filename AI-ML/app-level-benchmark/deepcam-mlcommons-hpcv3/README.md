@@ -5,6 +5,11 @@ Exascale Deep Learning for Climate Analytics codebase here:
 https://github.com/azrael417/ClimDeepLearn, and the paper:
 https://arxiv.org/abs/1810.01993
 
+## AMD rocAL NumPy loader
+
+For the AMD rocAL NumPy loader, supported formats, requirements, usage, and
+MI250 validation results, see [ROCAL.md](ROCAL.md).
+
 ## Dataset
 
 The dataset for this benchmark comes from CAM5 [1] simulations and is hosted at
